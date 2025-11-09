@@ -1,16 +1,18 @@
+# backend/app/main.py
 """Main FastAPI application"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
-from pathlib import Path
 
 from app.config import settings
 from app.routers import chat, stt, tts, admin
+from app.routers import auth as auth_router
 from app.core.embed import EmbeddingModel
 from app.core.generator import GeneratorModel
 from app.core.indexer import IndexManager
 from app.deps import set_models
+from app.database import init_db
 
 # Configure logging
 logging.basicConfig(
@@ -27,34 +29,30 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Initialize models on startup"""
     logger.info("Initializing models...")
+    # DB/tables + default admin
+    init_db()
     
     # Initialize embedding model
     embedding_model = EmbeddingModel(settings.MODEL_NAME_EMBED)
-    
     # Initialize generator model
     generator_model = GeneratorModel(
         model_name=settings.MODEL_NAME_GEN,
         use_local=settings.USE_LOCAL_GENERATOR,
         api_key=settings.GROQ_API_KEY
     )
-    
     # Initialize index manager
     index_manager = IndexManager(
         embedding_model=embedding_model,
         index_dir=settings.FAISS_DIR
     )
-    
     # Set global instances
     set_models(embedding_model, generator_model, index_manager)
-    
     # Load existing index if available
     if index_manager.load_index():
         logger.info("Loaded existing FAISS index")
     else:
         logger.warning("No existing index found. Please build index via admin API.")
-    
     yield
-    
     # Cleanup
     logger.info("Shutting down...")
 
@@ -68,17 +66,18 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Include routers
-app.include_router(chat.router, prefix="/api")
-app.include_router(stt.router, prefix="/api")
-app.include_router(tts.router, prefix="/api")
-app.include_router(admin.router, prefix="/api/admin")
+app.include_router(auth_router.router, prefix="/api/auth", tags=["auth"])
+app.include_router(chat.router, prefix="/api", tags=["chat"])
+app.include_router(stt.router, prefix="/api", tags=["stt"])
+app.include_router(tts.router, prefix="/api", tags=["tts"])
+app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 
 @app.get("/")
 async def root():
