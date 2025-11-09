@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+// frontend/src/components/Chat.tsx
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Send, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,45 +23,42 @@ export function Chat() {
   const micButtonRef = useRef<{ handleClick: () => void } | null>(null)
   const chatMutation = useChat()
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  // prevent auto-scroll on first render
+  const hasMountedRef = useRef(false)
 
-  // Check scroll position
-  const handleScroll = () => {
-    if (messagesContainerRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current
-      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100
-      setShowScrollButton(!isNearBottom && messages.length > 0)
-    }
-  }
-
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages])
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+K or Cmd+K: Focus input
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault()
-        inputRef.current?.focus()
-      }
-
-      // Ctrl+M or Cmd+M: Toggle microphone
-      if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
-        e.preventDefault()
-        micButtonRef.current?.handleClick()
-      }
-
-      // Shift+Enter: New line (allow default behavior)
-      // Enter alone: Submit (handled in form)
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [])
+
+  // Show/hide floating scroll button based on container scroll position
+  const handleScroll = useCallback(() => {
+    if (!messagesContainerRef.current) return
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100
+    setShowScrollButton(!isNearBottom && messages.length > 0)
+  }, [messages.length])
+
+  // Only auto-scroll when new messages arrive AND user is already near bottom
+  useEffect(() => {
+    if (!messagesContainerRef.current) return
+    // Skip the very first render to avoid jumping to bottom on page load
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true
+      return
+    }
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 120
+    if (isNearBottom) {
+      scrollToBottom()
+    }
+  }, [messages.length, scrollToBottom])
+
+  // Re-check scroll button visibility on resize
+  useEffect(() => {
+    const onResize = () => handleScroll()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [handleScroll])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -75,14 +73,16 @@ export function Chat() {
 
     setMessages(prev => [...prev, userMessage])
     const currentInput = input
-    
-    // Immediately clear input and disable speech updates
+
     setInput('')
     setIsListeningActive(false)
 
+    // Scroll after adding the user message (only if near bottom)
+    handleScroll()
+
     try {
       const response = await chatMutation.mutateAsync(currentInput)
-      
+
       const assistantMessage: MessageType = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -100,14 +100,13 @@ export function Chat() {
 
   const handleSuggestedQuestion = (question: string) => {
     setInput(question)
-    // Auto-submit
+
     const userMessage: MessageType = {
       id: Date.now().toString(),
       role: 'user',
       content: question,
       timestamp: new Date(),
     }
-
     setMessages(prev => [...prev, userMessage])
 
     chatMutation.mutateAsync(question).then((response) => {
@@ -140,11 +139,20 @@ export function Chat() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-16rem)] relative">
-      <div 
+    <div className="relative">
+      {/* Chat scroll area */}
+      <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-4 py-6 space-y-6"
+        className={cn(
+          // Wider reading lane with generous padding
+          "mx-auto w-full max-w-5xl",
+          "overflow-y-auto px-3 sm:px-4 md:px-6 py-6 space-y-6",
+          // Taller viewport for comfortable reading
+          "rounded-2xl"
+        )}
+        // Adjust to your header/tabs/composer heights; this gives more room than before
+        style={{ height: 'calc(100vh - 220px)' }}
       >
         <AnimatePresence mode="popLayout">
           {messages.length === 0 ? (
@@ -154,7 +162,7 @@ export function Chat() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.4 }}
-              className="max-w-4xl mx-auto"
+              className="mx-auto w-full max-w-5xl"
             >
               <SuggestedQuestions onQuestionClick={handleSuggestedQuestion} />
             </motion.div>
@@ -164,8 +172,9 @@ export function Chat() {
                 key={message.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.25, delay: index * 0.03 }}
+                className="mx-auto w-full max-w-5xl"
               >
                 <Message message={message} />
               </motion.div>
@@ -175,9 +184,9 @@ export function Chat() {
 
         {chatMutation.isPending && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex items-start gap-3"
+            className="mx-auto w-full max-w-5xl flex items-start gap-3"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70">
               <Sparkles className="h-5 w-5 text-white animate-pulse" />
@@ -185,21 +194,9 @@ export function Chat() {
             <div className="flex-1 glass rounded-2xl p-4">
               <div className="flex items-center gap-3">
                 <div className="flex gap-1">
-                  <motion.div
-                    className="w-2 h-2 bg-primary rounded-full"
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
-                  />
-                  <motion.div
-                    className="w-2 h-2 bg-primary rounded-full"
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }}
-                  />
-                  <motion.div
-                    className="w-2 h-2 bg-primary rounded-full"
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }}
-                  />
+                  <motion.div className="w-2 h-2 bg-primary rounded-full" animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0 }} />
+                  <motion.div className="w-2 h-2 bg-primary rounded-full" animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }} />
+                  <motion.div className="w-2 h-2 bg-primary rounded-full" animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }} />
                 </div>
                 <span className="text-sm text-muted-foreground font-medium">
                   Analyzing traffic laws...
@@ -208,20 +205,21 @@ export function Chat() {
             </div>
           </motion.div>
         )}
-        
+
         <div ref={messagesEndRef} />
       </div>
 
       <ScrollToBottom show={showScrollButton} onClick={scrollToBottom} />
 
+      {/* Composer */}
       <motion.div
-        initial={{ y: 20, opacity: 0 }}
+        initial={{ y: 16, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="glass border-t"
+        transition={{ delay: 0.1 }}
+        className="glass border-t sticky bottom-0"
       >
         <form onSubmit={handleSubmit} className="p-4">
-          <div className="flex gap-2 max-w-4xl mx-auto">
+          <div className="mx-auto w-full max-w-5xl flex gap-2">
             <div className="flex-1 relative group">
               <Input
                 ref={inputRef}
@@ -247,15 +245,11 @@ export function Chat() {
                 </motion.div>
               )}
             </div>
-            
-            <MicButton 
-              ref={micButtonRef}
-              onTranscriptUpdate={handleTranscriptUpdate}
-              onStatusChange={handleMicStatusChange}
-            />
-            
-            <Button 
-              type="submit" 
+
+            <MicButton ref={micButtonRef} onTranscriptUpdate={handleTranscriptUpdate} onStatusChange={handleMicStatusChange} />
+
+            <Button
+              type="submit"
               disabled={chatMutation.isPending || !input.trim()}
               size="lg"
               className={cn(
@@ -268,7 +262,7 @@ export function Chat() {
               <Send className="h-5 w-5" />
             </Button>
           </div>
-          
+
           {messages.length > 0 && (
             <motion.p
               initial={{ opacity: 0 }}
