@@ -201,6 +201,12 @@
   }
 }
 
+@layer utilities {
+  .reading-lane {
+    max-width: 72ch;
+  }
+}
+
 /* Prose improvements */
 .prose {
   @apply text-foreground max-w-none;

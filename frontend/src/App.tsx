@@ -1,3 +1,4 @@
+// frontend/src/App.tsx
 import { useState, useEffect } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Header } from './components/Header'
@@ -6,13 +7,14 @@ import { Chat } from './components/Chat'
 import { AdminPanel } from './components/AdminPanel'
 import { useTheme } from './lib/hooks'
 import { Toaster } from '@/components/ui/toaster'
+import { useAuth } from './contexts/AuthContext'
 
 function App() {
   const [activeTab, setActiveTab] = useState('chat')
   const { theme, setTheme } = useTheme()
+  const { isAdmin } = useAuth()
 
   useEffect(() => {
-    // Apply theme class to document
     if (theme === 'dark') {
       document.documentElement.classList.add('dark')
     } else {
@@ -28,7 +30,7 @@ function App() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-4">
             <TabsTrigger value="chat">Chat Assistant</TabsTrigger>
-            <TabsTrigger value="admin">Admin Panel</TabsTrigger>
+            <TabsTrigger value="admin" disabled={!isAdmin}>Admin Panel</TabsTrigger>
           </TabsList>
           
           <TabsContent value="chat" className="mt-0">
@@ -36,7 +38,13 @@ function App() {
           </TabsContent>
           
           <TabsContent value="admin" className="mt-0">
-            <AdminPanel />
+            {isAdmin ? (
+              <AdminPanel />
+            ) : (
+              <div className="p-6 glass rounded-lg border text-sm text-muted-foreground">
+                Admin access required. Please log in with an admin account.
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </main>

@@ -6,12 +6,14 @@ import pandas as pd
 import json
 import tempfile
 from typing import Optional
+from app.core.permissions import require_admin
+from fastapi import Depends
 
 from app.schemas import IndexRequest, IndexResponse, StatsResponse
 from app.deps import get_index_manager
 from app.config import settings
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_admin)])
 logger = logging.getLogger(__name__)
 
 @router.post("/index", response_model=IndexResponse)
