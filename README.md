@@ -37,11 +37,4 @@ See backend/README.md and frontend/README.md for detailed instructions.
 This application provides informational content about Indian traffic laws and is not a substitute for professional legal advice.
 
 
-### pocket-traffic-lawyer/.env.example
-```env
-# API Configuration
-GROQ_API_KEY=your_groq_api_key_here
-USE_LOCAL_GENERATOR=false
-BACKEND_URL=http://localhost:8000
-
 ```
