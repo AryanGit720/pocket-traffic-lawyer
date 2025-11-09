@@ -1,7 +1,9 @@
+// frontend/src/components/Header.tsx
 import { Scale, Sparkles } from 'lucide-react'
 import { ThemeToggle } from './ThemeToggle'
 import { KeyboardShortcuts } from './KeyboardShortcuts'
 import { motion } from 'framer-motion'
+import { UserMenu } from './UserMenu'
 
 interface HeaderProps {
   theme: 'light' | 'dark'
@@ -52,6 +54,7 @@ export function Header({ theme, setTheme }: HeaderProps) {
             className="flex items-center gap-2"
           >
             <KeyboardShortcuts />
+            <UserMenu />
             <ThemeToggle theme={theme} setTheme={setTheme} />
           </motion.div>
         </div>
