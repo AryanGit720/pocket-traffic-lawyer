@@ -1,14 +1,13 @@
-# ===== Backend Dockerfile =====
-# Use a lightweight Python image
+# ===== Backend Dockerfile (Optimized for Railway) =====
 FROM python:3.11-slim
 
-# Prevents Python from writing .pyc files and ensures logs are shown in real-time
+# Prevent writing .pyc files, force unbuffered logs
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
-# ---- System dependencies ----
-# ffmpeg (for Speech-to-Text), curl (for downloads), build tools for compiling any deps
+# ---- Install minimal system packages ----
+# (Includes ffmpeg for audio, curl for health checks, build tools for faiss)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     ffmpeg \
@@ -18,20 +17,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # ---- Set working directory ----
 WORKDIR /app
 
-# ---- Copy project files ----
-COPY pyproject.toml .
+# ---- Copy requirements first (for better Docker caching) ----
+COPY requirements.txt .
+
+# ---- Install Python deps ----
+RUN pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
+
+# ---- Copy app source ----
 COPY app ./app
 
-# ---- Install Python dependencies ----
-RUN pip install --upgrade pip && pip install -e .
-
-# ---- Create directories for runtime data ----
-# These can be mounted as volumes on Railway or Docker Compose
+# ---- Create runtime directories ----
 RUN mkdir -p app/data/index logs /models_cache
 
-# ---- Environment and port configuration ----
+# ---- Environment setup ----
 ENV PORT=8000
 EXPOSE 8000
 
-# ---- Run the backend server ----
+# ---- Run server ----
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
