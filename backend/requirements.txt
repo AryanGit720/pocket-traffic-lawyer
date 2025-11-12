@@ -1,0 +1,26 @@
+# --- Core Framework ---
+fastapi
+uvicorn[standard]
+
+# --- Data + Math ---
+numpy
+pandas
+
+# --- Vector Search ---
+faiss-cpu
+
+# --- Language + Embeddings ---
+sentence-transformers
+langchain
+tiktoken
+
+# --- API Calls ---
+requests
+httpx
+
+# --- Utils ---
+python-dotenv
+pydantic
+
+# --- Optional (for Groq/OpenAI access) ---
+Groq

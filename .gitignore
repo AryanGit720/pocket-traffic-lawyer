@@ -1,5 +1,8 @@
-# Python
+# ========================================
+# 🐍 Python
+# ========================================
 __pycache__/
+pycache/
 *.py[cod]
 *$py.class
 *.so
@@ -12,8 +15,24 @@ build/
 logs/
 *.log
 
-# Node
+# ========================================
+# 🧠 Backend specific
+# ========================================
+backend/.env
+backend/logs/
+backend/app/data/auth.db
+backend/app/data/index/*.faiss
+backend/app/data/index/*.pkl
+models_cache/
+models_cache/
+*.tmp
+*.temp
+
+# ========================================
+# 🧰 Node / Frontend
+# ========================================
 node_modules/
+frontend/node_modules/
 dist/
 build/
 .env.local
@@ -21,38 +40,36 @@ build/
 .env.test.local
 .env.production.local
 
-# IDE
+# ========================================
+# 💻 IDE / Editor files
+# ========================================
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS
+# ========================================
+# 🧩 OS generated files
+# ========================================
 .DS_Store
 Thumbs.db
 
-# Environment variables (sensitive)
+# ========================================
+# 🔒 Environment variables (sensitive)
+# ========================================
 .env
 
-# Model cache
-models_cache/
-/models_cache/
-
-# FAISS index (large files - will be rebuilt)
-backend/app/data/index/*.faiss
-backend/app/data/index/*.pkl
-
-# Temporary files
-*.tmp
-*.temp
-
-# Test coverage
+# ========================================
+# 🧪 Testing / Coverage
+# ========================================
 .coverage
 htmlcov/
 .pytest_cache/
 
-# Build artifacts
+# ========================================
+# 🏗️ Build Artifacts / Misc
+# ========================================
 *.pyc
 *.pyo
 *.pyd
